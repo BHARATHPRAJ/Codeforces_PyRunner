@@ -1,0 +1,32 @@
+{
+  "name": "codeforces-pyrunner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npx concurrently \"node server/index.js\" \"node_modules\\.bin\\vite\"",
+    "server": "node server/index.js",
+    "client": "node_modules\\.bin\\vite",
+    "build": "node_modules\\.bin\\vite build"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "lucide-react": "^0.380.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.5.6",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "vite": "^5.2.11"
+  }
+}
