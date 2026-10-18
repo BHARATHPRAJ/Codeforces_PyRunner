@@ -1,9 +1,24 @@
 import React, { useState, useMemo } from 'react';
-import { CheckCircle2, XCircle, Clock, AlertTriangle, Play, ChevronRight, GitCompare, Terminal } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Play, ChevronRight, Terminal } from 'lucide-react';
 import DiffViewer from './DiffViewer.jsx';
 
 export default function ResultsPanel({ results, testCases, onRun, isRunning }) {
   const [selectedTcId, setSelectedTcId] = useState(null);
+
+  const { acCount, waCount, tleCount, rteCount, mleCount, activeResults } = useMemo(() => {
+    const active = results.filter((r) => !r.disabled);
+    return active.reduce(
+      (acc, r) => {
+        if (r.status === 'AC') acc.acCount++;
+        else if (r.status === 'WA') acc.waCount++;
+        else if (r.status === 'TLE') acc.tleCount++;
+        else if (r.status === 'MLE') acc.mleCount++;
+        else if (r.status === 'RTE') acc.rteCount++;
+        return acc;
+      },
+      { acCount: 0, waCount: 0, tleCount: 0, rteCount: 0, mleCount: 0, activeResults: active }
+    );
+  }, [results]);
 
   if (isRunning) {
     return (
@@ -36,21 +51,6 @@ export default function ResultsPanel({ results, testCases, onRun, isRunning }) {
       </div>
     );
   }
-
-  const { acCount, waCount, tleCount, rteCount, mleCount, activeResults } = useMemo(() => {
-    const active = results.filter((r) => !r.disabled);
-    return active.reduce(
-      (acc, r) => {
-        if (r.status === 'AC') acc.acCount++;
-        else if (r.status === 'WA') acc.waCount++;
-        else if (r.status === 'TLE') acc.tleCount++;
-        else if (r.status === 'MLE') acc.mleCount++;
-        else if (r.status === 'RTE') acc.rteCount++;
-        return acc;
-      },
-      { acCount: 0, waCount: 0, tleCount: 0, rteCount: 0, mleCount: 0, activeResults: active }
-    );
-  }, [results]);
 
   const currentResult = results.find((r) => r.id === selectedTcId) || results[0];
   const currentTc = testCases.find((tc) => tc.id === (currentResult ? currentResult.id : null));

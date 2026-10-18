@@ -16,9 +16,7 @@ async function testCmd(cmd, args = ['--version']) {
       windowsHide: true
     });
     return (stdout || stderr || '').trim();
-  } catch (err) {
-    if (err.stdout) return err.stdout.trim();
-    if (err.stderr) return err.stderr.trim();
+  } catch {
     return null;
   }
 }

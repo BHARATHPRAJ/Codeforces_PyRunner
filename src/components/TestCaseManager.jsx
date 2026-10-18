@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Plus, Trash2, Copy, Eye, EyeOff, Clipboard, FileText, CheckCircle2, XCircle, Clock, AlertTriangle, Check, SlidersHorizontal } from 'lucide-react';
+import { Plus, Trash2, Copy, Eye, EyeOff, Clipboard, FileText, CheckCircle2, XCircle, Clock, AlertTriangle, Check } from 'lucide-react';
 import BatchPasteModal from './BatchPasteModal.jsx';
 
 export default function TestCaseManager({ testCases, setTestCases, results, onOpenBatchModal }) {
