@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { runSingleTestCaseWithFile, normalizeOutput } from './runner.js';
+import { createSandboxExecutor, isSandboxExecutionEnabled } from './sandbox-executor.js';
+
+const MAX_STRESS_DURATION_MS = 60_000;
 
 function cleanupDir(dirPath) {
   try {
@@ -27,27 +30,59 @@ export async function runStressTest({
   let counterExampleFound = false;
   let result = null;
 
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-stress-'));
-  const genFile = path.join(tempDir, 'generator.py');
-  const solFile = path.join(tempDir, 'solution.py');
-  const bruteFile = path.join(tempDir, 'brute.py');
+  const sandboxExecutor = isSandboxExecutionEnabled() ? await createSandboxExecutor() : null;
+  const tempDir = sandboxExecutor ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'cf-stress-'));
+  const genFile = tempDir ? path.join(tempDir, 'generator.py') : null;
+  const solFile = tempDir ? path.join(tempDir, 'solution.py') : null;
+  const bruteFile = tempDir ? path.join(tempDir, 'brute.py') : null;
+  const startedAt = Date.now();
 
   try {
-    fs.writeFileSync(genFile, generatorCode, 'utf-8');
-    fs.writeFileSync(solFile, solutionCode, 'utf-8');
-    fs.writeFileSync(bruteFile, bruteCode, 'utf-8');
+    if (!sandboxExecutor) {
+      fs.writeFileSync(genFile, generatorCode, 'utf-8');
+      fs.writeFileSync(solFile, solutionCode, 'utf-8');
+      fs.writeFileSync(bruteFile, bruteCode, 'utf-8');
+    }
 
-    for (let i = 1; i <= maxIterations; i++) {
-      // 1. Generate test case input
-      const genRes = await runSingleTestCaseWithFile({
-        scriptPath: genFile,
-        input: `${i} ${Date.now()}`,
+    const runProgram = ({ fileName, scriptPath, code, input, timeoutMs }) => {
+      if (sandboxExecutor) {
+        return sandboxExecutor.run({
+          fileName,
+          code,
+          input,
+          expectedOutput: '',
+          timeoutMs,
+          memoryLimitMb: 512
+        });
+      }
+
+      return runSingleTestCaseWithFile({
+        scriptPath,
+        input,
         expectedOutput: '',
         runtimeCmd,
+        timeoutMs
+      });
+    };
+
+    for (let i = 1; i <= maxIterations; i++) {
+      if (Date.now() - startedAt >= MAX_STRESS_DURATION_MS) {
+        return {
+          success: false,
+          error: `Stress test stopped after reaching the ${MAX_STRESS_DURATION_MS / 1000}-second time limit.`
+        };
+      }
+
+      // 1. Generate test case input
+      const genRes = await runProgram({
+        fileName: 'generator.py',
+        scriptPath: genFile,
+        code: generatorCode,
+        input: `${i} ${Date.now()}`,
         timeoutMs: 5000
       });
 
-      if (genRes.status === 'RTE' || genRes.status === 'TLE') {
+      if (['RTE', 'TLE', 'MLE'].includes(genRes.status)) {
         return {
           success: false,
           error: `Generator failed at iteration ${i}: ${genRes.stderr || 'Runtime/Time Limit Error'}`
@@ -57,29 +92,36 @@ export async function runStressTest({
       const testInput = genRes.stdout;
 
       // 2. Run Solution Code
-      const solRes = await runSingleTestCaseWithFile({
+      const solRes = await runProgram({
+        fileName: 'solution.py',
         scriptPath: solFile,
+        code: solutionCode,
         input: testInput,
-        expectedOutput: '',
-        runtimeCmd,
         timeoutMs
       });
 
       // 3. Run Brute Force Code
-      const bruteRes = await runSingleTestCaseWithFile({
+      const bruteRes = await runProgram({
+        fileName: 'brute.py',
         scriptPath: bruteFile,
+        code: bruteCode,
         input: testInput,
-        expectedOutput: '',
-        runtimeCmd,
         timeoutMs: timeoutMs * 2 // allow slightly more time for brute force
       });
 
       const solOut = normalizeOutput(solRes.stdout);
       const bruteOut = normalizeOutput(bruteRes.stdout);
 
+      if (['RTE', 'TLE', 'MLE'].includes(bruteRes.status)) {
+        return {
+          success: false,
+          error: `Brute-force program failed at iteration ${i}: ${bruteRes.stderr || bruteRes.status}`
+        };
+      }
+
       // Check if solution failed or outputs mismatch
       const isMismatch = solOut !== bruteOut;
-      const isError = solRes.status === 'RTE' || solRes.status === 'TLE';
+      const isError = ['RTE', 'TLE', 'MLE'].includes(solRes.status);
 
       if (isMismatch || isError) {
         counterExampleFound = true;
@@ -101,6 +143,7 @@ export async function runStressTest({
     }
   } finally {
     cleanupDir(tempDir);
+    await sandboxExecutor?.close();
   }
 
   if (counterExampleFound) {

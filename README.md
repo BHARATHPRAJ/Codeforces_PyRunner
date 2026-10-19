@@ -32,7 +32,7 @@ Running Python solutions directly on Codeforces sample cases can be tedious, and
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18+)
+- [Node.js](https://nodejs.org/) (v22+)
 - [Python 3](https://www.python.org/) and/or [PyPy 3](https://www.pypy.org/) added to system PATH
 
 ### Installation
@@ -56,6 +56,21 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
+## Hosted Deployment
+
+The Render Blueprint in `render.yaml` deploys the frontend and Express API as one Node service. Submitted programs run in disposable Vercel Sandbox microVMs; Python is not installed or executed on the Render host.
+
+1. Push the repository to GitHub.
+2. In Vercel, create a project for Sandbox access and create an access token with access to that project. Find the team ID and project ID in Vercel settings.
+3. In Render, create a new Blueprint from the repository and select `render.yaml`.
+4. Set the prompted `APP_ACCESS_PASSWORD` to a unique value of at least 16 characters. Set `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` using values from Vercel. Enter secrets only in Render's environment settings; do not commit them.
+5. Deploy and open the Render URL. The browser will request the shared app password before loading the app.
+
+The hosted API fails to start if Sandbox credentials or the access password are missing. Sandbox sessions use one vCPU, deny outbound network access, have a 120-second session ceiling, cap process memory and output, and are deleted after each run. Normal runs reuse one sandbox for all test cases; stress tests reuse one sandbox for the generator, solution, and brute-force programs.
+
+The Blueprint uses Render's Free plan for an initial private demo. Free services can sleep after 15 minutes without traffic, so the first request after idle may take about a minute. Vercel Sandbox Hobby quotas are limited; check current usage and concurrency limits before inviting users. The app currently limits each Render process to three simultaneous execution requests. This is not per-user authentication: the shared password is suitable only for a small private test. Use individual accounts, rate limiting, and a paid service plan before opening it to the public.
+
+For local sandbox development, set `EXECUTION_MODE=sandbox` and provide `VERCEL_TOKEN`, `VERCEL_TEAM_ID`, and `VERCEL_PROJECT_ID` in the server process environment. Do not commit these values. Without that mode, local development continues using the locally installed Python/PyPy runner.
 ---
 
 ## Scripts
@@ -66,6 +81,7 @@ Open `http://localhost:3000` in your browser.
 | `npm run server` | Starts only the Node/Express backend runner on port 5000 |
 | `npm run client` | Starts only the frontend Vite dev server on port 3000 |
 | `npm run build` | Compiles the production frontend bundle into `dist/` |
+| `npm test` | Runs backend runner and deployment configuration tests |
 
 ---
 
