@@ -3,19 +3,28 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "dev": "npx concurrently \"node server/index.js\" \"node_modules\\.bin\\vite\"",
+    "dev": "concurrently \"node server/index.js\" \"vite --port 3000\"",
+    "start": "node server/index.js",
     "server": "node server/index.js",
-    "client": "node_modules\\.bin\\vite",
-    "build": "node_modules\\.bin\\vite build"
+    "client": "vite --port 3000",
+    "build": "vite build",
+    "test": "node --test"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
-    "cors": "^2.8.5",
+    "@vercel/sandbox": "^3.8.0",
     "express": "^4.19.2",
     "lucide-react": "^0.380.0",
+    "monaco-editor": "^0.57.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "overrides": {
+    "dompurify": "^3.4.17"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { createSandboxExecutor, isSandboxExecutionEnabled } from './sandbox-executor.js';
 
 const MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB buffer safety cap
 
@@ -238,6 +239,41 @@ export async function runSingleTestCase({ code, input, expectedOutput, runtimeCm
  * Run solution against multiple test cases concurrently using single-write batch execution.
  */
 export async function runAllTestCases({ code, testCases, runtimeCmd, timeoutMs = 2000, memoryLimitMb = 512 }) {
+  if (isSandboxExecutionEnabled()) {
+    const executor = await createSandboxExecutor();
+    try {
+      const results = [];
+      for (const testCase of testCases) {
+        if (testCase.disabled) {
+          results.push({
+            id: testCase.id,
+            status: 'SKIPPED',
+            stdout: '',
+            stderr: '',
+            executionTimeMs: 0,
+            peakMemoryMb: 0,
+            disabled: true
+          });
+          continue;
+        }
+
+        const result = await executor.run({
+          fileName: 'solution.py',
+          code,
+          wrapperCode: WRAPPER_CODE,
+          input: testCase.input || '',
+          expectedOutput: testCase.expectedOutput || '',
+          timeoutMs,
+          memoryLimitMb
+        });
+        results.push({ id: testCase.id, ...result });
+      }
+      return results;
+    } finally {
+      await executor.close();
+    }
+  }
+
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cf-batch-'));
   const tempFile = path.join(tempDir, 'solution.py');
   const wrapperFile = path.join(tempDir, 'wrapper.py');

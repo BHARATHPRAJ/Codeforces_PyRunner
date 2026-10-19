@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: codeforces-pyrunner
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: EXECUTION_MODE
+        value: sandbox
+      - key: APP_ACCESS_PASSWORD
+        sync: false
+      - key: VERCEL_TOKEN
+        sync: false
+      - key: VERCEL_TEAM_ID
+        sync: false
+      - key: VERCEL_PROJECT_ID
+        sync: false
